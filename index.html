@@ -2097,63 +2097,89 @@ if ('serviceWorker' in navigator) {
   function _today(){var d=new Date();return d.getFullYear()+'-'+_pad(d.getMonth()+1)+'-'+_pad(d.getDate());}
   function _days(y,m){return new Date(y,m,0).getDate();}
 
-  /* ── Fetch dữ liệu thực tế ── */
+  /* ── Fetch dữ liệu: đọc từ localStorage cache của app (zero network, 100% mobile) ── */
   async function loadFabData(){
+    var CP='tlse_c_';
     var today=_today();
-    var ty=parseInt(today.split('-')[0]), tm=parseInt(today.split('-')[1]);
-    var ctx='';
+    var byDate={};
 
-    for(var i=0;i<2;i++){
-      var m=tm-i, y=ty;
-      if(m<=0){m+=12;y--;}
-
-      var days=_days(y,m), dates=[];
-      for(var d=1;d<=days;d++){
-        var ds=y+'-'+_pad(m)+'-'+_pad(d);
-        if(ds>today)break;
-        dates.push(ds);
-      }
-      if(!dates.length)continue;
-
-      var ym=m+'_'+y;
-      var orderResults=[], costData={costs:[]}, fixedData={ok:false};
-      try{ orderResults = await fetchRange(dates); }catch(e){ orderResults=dates.map(function(dt){return {date:dt,orders:[]};});}
-      try{ costData = await apiSmart({action:'getCostsByMonth',yearMonth:ym}); }catch(e){}
-      try{ fixedData = await apiSmart({action:'getFixedCosts',yearMonth:ym}); }catch(e){}
-
-      var cbd={};
-      (costData.costs||[]).forEach(function(c){
-        var dk=normDate(c.date);
-        if(!dk)return;
-        if(!cbd[dk])cbd[dk]={p:0,a:0};
-        cbd[dk].p+=n(c.price);
-        cbd[dk].a+=n(c.adCost);
+    /* 1. Đọc toàn bộ cache đơn hàng từ localStorage */
+    try{
+      Object.keys(localStorage).forEach(function(k){
+        if(!k.startsWith(CP)) return;
+        try{
+          var raw=localStorage.getItem(k); if(!raw) return;
+          var cached=JSON.parse(raw); if(!cached||!cached.d) return;
+          /* Cache đơn hàng: key chứa "date=YYYY-MM-DD" */
+          var om=k.match(/date%3D(\d{4}-\d{2}-\d{2})|date=(\d{4}-\d{2}-\d{2})/);
+          if(om && cached.d.orders){
+            var dt=om[1]||om[2];
+            if(!byDate[dt]) byDate[dt]={orders:[],cp:0,ca:0};
+            byDate[dt].orders=cached.d.orders;
+          }
+          /* Cache chi phí tháng: key chứa "getCostsByMonth" */
+          if(k.includes('getCostsByMonth') && cached.d.costs){
+            cached.d.costs.forEach(function(c){
+              var s=String(c.date||'').trim();
+              /* Chuẩn hoá ngày về YYYY-MM-DD */
+              var dt2='';
+              if(/^\d{4}-\d{2}-\d{2}$/.test(s)) dt2=s;
+              else{ var p=s.split(/[\/\-]/);
+                if(p.length===3) dt2=(p[2].length===4?p[2]:p[0])+'-'+_pad(parseInt(p[1]))+'-'+_pad(parseInt(p[2].length===4?p[0]:p[2]));
+              }
+              if(!dt2) return;
+              if(!byDate[dt2]) byDate[dt2]={orders:[],cp:0,ca:0};
+              byDate[dt2].cp+=Number(c.price||0);
+              byDate[dt2].ca+=Number(c.adCost||0);
+            });
+          }
+        }catch(e){}
       });
+    }catch(e){}
 
-      var orderRows=[], totalOrders=0, totalCake=0, totalShip=0, costP=0, costA=0;
-      orderResults.forEach(function(row){
-        var orders=row.orders||[];
-        var cake=orders.reduce(function(s,o){return s+n(o.cakePrice)+n(o.accPrice);},0);
-        var ship=orders.reduce(function(s,o){return s+n(o.ship);},0);
-        var dc=cbd[row.date]||{p:0,a:0};
-        totalOrders+=orders.length; totalCake+=cake; totalShip+=ship;
-        costP+=dc.p; costA+=dc.a;
-        if(orders.length||dc.p||dc.a){
-          var dd=row.date.split('-')[2]+'/'+_pad(m);
-          var detail=orders.map(function(o){
-            return '('+(o.time||'?')+' '+(o.name||'?')+' '+(o.size||'')+' '+Math.round((n(o.cakePrice)+n(o.accPrice))/1000)+'k)';
-          }).join(' ');
-          orderRows.push('  '+dd+': '+orders.length+' đơn DT='+Math.round(cake/1000)+'k ship='+Math.round(ship/1000)+'k nhập='+Math.round(dc.p/1000)+'k QC='+Math.round(dc.a/1000)+'k '+detail);
-        }
-      });
-
-      var fixed=fixedData.ok ? n(fixedData.rent)+n(fixedData.elec)+n(fixedData.water)+n(fixedData.salary) : 0;
-      var profit=totalCake-costP-costA-fixed;
-      ctx+='\n--- THÁNG '+m+'/'+y+' ---\n';
-      ctx+='Tổng: '+totalOrders+' đơn | DT bánh+PK='+_fmt(totalCake)+' | Ship='+_fmt(totalShip)+' | Nhập='+_fmt(costP)+' | QC='+_fmt(costA)+' | Cố định='+_fmt(fixed)+' | LN='+_fmt(profit)+'\n';
-      ctx+=orderRows.join('\n')+'\n';
+    /* 2. Nếu hôm nay chưa có trong cache → fetch 1 request duy nhất */
+    if(!byDate[today]||!byDate[today].orders||!byDate[today].orders.length){
+      try{
+        var r=await fetch(SCRIPT_URL+'?action=getOrders&date='+today);
+        var rd=await r.json();
+        if(!byDate[today]) byDate[today]={orders:[],cp:0,ca:0};
+        byDate[today].orders=rd.orders||[];
+      }catch(e){}
     }
-    return ctx||'(Chưa có dữ liệu)';
+
+    /* 3. Xây dựng context string */
+    var dates=Object.keys(byDate).sort().reverse();
+    var months={}, lines=[];
+
+    dates.forEach(function(dt){
+      var row=byDate[dt]; if(!row) return;
+      var orders=row.orders||[];
+      var cake=orders.reduce(function(s,o){return s+_n(o.cakePrice)+_n(o.accPrice);},0);
+      var ship=orders.reduce(function(s,o){return s+_n(o.ship);},0);
+      var parts=dt.split('-'), ym=parts[1]+'/'+parts[0];
+      if(!months[ym]) months[ym]={cnt:0,cake:0,ship:0,cp:0,ca:0};
+      months[ym].cnt+=orders.length;
+      months[ym].cake+=cake;
+      months[ym].ship+=ship;
+      months[ym].cp+=row.cp;
+      months[ym].ca+=row.ca;
+      if(orders.length||row.cp||row.ca){
+        var dd=parts[2]+'/'+parts[1];
+        var detail=orders.map(function(o){
+          return '('+(o.time||'?')+' '+(o.name||'?')+' '+(o.size||'')+' '+Math.round((_n(o.cakePrice)+_n(o.accPrice))/1000)+'k)';
+        }).join(' ');
+        lines.push('  '+dd+': '+orders.length+' đơn DT='+Math.round(cake/1000)+'k ship='+Math.round(ship/1000)+'k nhập='+Math.round(row.cp/1000)+'k QC='+Math.round(row.ca/1000)+'k '+detail);
+      }
+    });
+
+    var mSummary='';
+    Object.keys(months).sort().reverse().forEach(function(ym){
+      var m=months[ym];
+      mSummary+='\nTHÁNG '+ym+': '+m.cnt+' đơn | DT='+_fmt(m.cake)+' | Ship='+_fmt(m.ship)+' | Nhập='+_fmt(m.cp)+' | QC='+_fmt(m.ca)+'\n';
+    });
+
+    var detail=lines.length ? '\nCHI TIẾT TỪNG NGÀY:\n'+lines.join('\n') : '';
+    return (mSummary+detail) || '(Chưa có dữ liệu - hãy mở tab Đơn hàng trước)';
   }
 
   /* ── Preload khi trang xong ── */
