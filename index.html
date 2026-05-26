@@ -2116,69 +2116,44 @@ if ('serviceWorker' in navigator) {
       if(!dates.length)continue;
 
       var ym=m+'_'+y;
-      var orderRows=[], costP=0, costA=0, totalOrders=0, totalCake=0, totalShip=0;
+      var orderResults=[], costData={costs:[]}, fixedData={ok:false};
+      try{ orderResults = await fetchRange(dates); }catch(e){ orderResults=dates.map(function(dt){return {date:dt,orders:[]};});}
+      try{ costData = await apiSmart({action:'getCostsByMonth',yearMonth:ym}); }catch(e){}
+      try{ fixedData = await apiSmart({action:'getFixedCosts',yearMonth:ym}); }catch(e){}
 
-      /* Fetch từng ngày song song */
-      var orderResults = await Promise.all(
-        dates.map(function(dt){
-          return fetch(SCRIPT_URL+'?'+new URLSearchParams({action:'getOrders',date:dt}))
-            .then(function(r){return r.json();})
-            .then(function(r){return {date:dt,orders:r.orders||[]};})
-            .catch(function(){return {date:dt,orders:[]};});
-        })
-      );
-
-      /* Fetch chi phí tháng */
-      var costData={costs:[]};
-      try{
-        var cr=await fetch(SCRIPT_URL+'?'+new URLSearchParams({action:'getCostsByMonth',yearMonth:ym}));
-        costData=await cr.json();
-      }catch(e){}
-
-      /* Map chi phí theo ngày */
       var cbd={};
       (costData.costs||[]).forEach(function(c){
-        var dk=(c.date||'').trim().replace(/\//g,'-');
+        var dk=normDate(c.date);
+        if(!dk)return;
         if(!cbd[dk])cbd[dk]={p:0,a:0};
-        cbd[dk].p+=_n(c.price);
-        cbd[dk].a+=_n(c.adCost);
+        cbd[dk].p+=n(c.price);
+        cbd[dk].a+=n(c.adCost);
       });
 
-      /* Tổng hợp từng ngày */
+      var orderRows=[], totalOrders=0, totalCake=0, totalShip=0, costP=0, costA=0;
       orderResults.forEach(function(row){
-        var orders=row.orders;
-        var cake=orders.reduce(function(s,o){return s+_n(o.cakePrice)+_n(o.accPrice);},0);
-        var ship=orders.reduce(function(s,o){return s+_n(o.ship);},0);
+        var orders=row.orders||[];
+        var cake=orders.reduce(function(s,o){return s+n(o.cakePrice)+n(o.accPrice);},0);
+        var ship=orders.reduce(function(s,o){return s+n(o.ship);},0);
         var dc=cbd[row.date]||{p:0,a:0};
-        totalOrders+=orders.length;
-        totalCake+=cake;
-        totalShip+=ship;
-        costP+=dc.p;
-        costA+=dc.a;
+        totalOrders+=orders.length; totalCake+=cake; totalShip+=ship;
+        costP+=dc.p; costA+=dc.a;
         if(orders.length||dc.p||dc.a){
           var dd=row.date.split('-')[2]+'/'+_pad(m);
           var detail=orders.map(function(o){
-            return '('+( o.time||'?')+' '+(o.name||'?')+' '+(o.size||'')+' '+Math.round(_n(o.cakePrice+o.accPrice)/1000)+'k)';
+            return '('+(o.time||'?')+' '+(o.name||'?')+' '+(o.size||'')+' '+Math.round((n(o.cakePrice)+n(o.accPrice))/1000)+'k)';
           }).join(' ');
           orderRows.push('  '+dd+': '+orders.length+' đơn DT='+Math.round(cake/1000)+'k ship='+Math.round(ship/1000)+'k nhập='+Math.round(dc.p/1000)+'k QC='+Math.round(dc.a/1000)+'k '+detail);
         }
       });
 
-      /* Lấy chi phí cố định */
-      var fixed=0;
-      try{
-        var fr=await fetch(SCRIPT_URL+'?'+new URLSearchParams({action:'getFixedCosts',yearMonth:ym}));
-        var fd=await fr.json();
-        if(fd.ok)fixed=_n(fd.rent)+_n(fd.elec)+_n(fd.water)+_n(fd.salary);
-      }catch(e){}
-
+      var fixed=fixedData.ok ? n(fixedData.rent)+n(fixedData.elec)+n(fixedData.water)+n(fixedData.salary) : 0;
       var profit=totalCake-costP-costA-fixed;
       ctx+='\n--- THÁNG '+m+'/'+y+' ---\n';
-      ctx+='Tổng: '+totalOrders+' đơn | DT bánh+PK='+_fmt(totalCake)+' | Ship='+_fmt(totalShip)+' | Nhập hàng='+_fmt(costP)+' | QC='+_fmt(costA)+' | Cố định='+_fmt(fixed)+' | LN ròng='+_fmt(profit)+'\n';
+      ctx+='Tổng: '+totalOrders+' đơn | DT bánh+PK='+_fmt(totalCake)+' | Ship='+_fmt(totalShip)+' | Nhập='+_fmt(costP)+' | QC='+_fmt(costA)+' | Cố định='+_fmt(fixed)+' | LN='+_fmt(profit)+'\n';
       ctx+=orderRows.join('\n')+'\n';
     }
-
-    return ctx || '(Chưa có dữ liệu)';
+    return ctx||'(Chưa có dữ liệu)';
   }
 
   /* ── Preload khi trang xong ── */
