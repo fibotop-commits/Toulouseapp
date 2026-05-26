@@ -385,6 +385,9 @@ tr.trow td{background:rgba(240,226,180,.3);color:#8B2C00;font-weight:700;border-
   .hdr h1{font-size:15px}.btn-row .btn span,.theme-btn span{display:none}
   .btn-row .btn,.theme-btn{padding:8px 10px}
 }
+@media(max-width:768px){
+  input, textarea, select { font-size: 16px !important; }
+}
 @media print{
   .hdr,.tabs,.btn-row,.dash-ctrl,.btn-ol,#tab-orders,#tab-costs,#tab-report,.rpt-card:first-child{display:none!important}
   #tab-dashboard{display:block!important}body{background:#fff}
@@ -2173,41 +2176,49 @@ if ('serviceWorker' in navigator) {
   const _t=`${String(_now.getHours()).padStart(2,'0')}:${String(_now.getMinutes()).padStart(2,'0')}`;
   const FAB_SYSTEM=`Bạn là trợ lý AI đa năng của tiệm bánh sinh nhật Toulouse (34C Ô Chợ Dừa, Hà Nội). Hỗ trợ chủ tiệm (tên Phi) về mọi vấn đề: phân tích đơn hàng, doanh thu, chi phí, lợi nhuận, soạn tin nhắn, tư vấn kinh doanh. Hôm nay: ${_d}, ${_t}. Phong cách: ngắn gọn, thực tế, dùng emoji. Luôn dùng tiếng Việt. Khi được hỏi về số liệu, hãy đọc từ DỮ LIỆU THỰC TẾ được cung cấp.`;
 
-  window.sendFab=async function(){
-    if(fabBusy)return;
-    const inp=$('fabInput');
-    const text=inp.value.trim();if(!text)return;
-    inp.value='';inp.style.height='38px';
-    $('fabSend').disabled=true;fabBusy=true;
-    fabAppend('user',text);
-    fabHistory.push({role:'user',parts:[{text}]});
-    fabTyping(true);
+  async function buildHistoryWithCtx(){
+  const ctx = await buildFabContext();
+  const seed = [
+    { role:'user',  parts:[{text:'Đây là toàn bộ dữ liệu kinh doanh thực tế của tiệm tôi:\n'+ctx+'\n\nHãy ghi nhớ để trả lời các câu hỏi tiếp theo.'}] },
+    { role:'model', parts:[{text:'Đã nhận đủ dữ liệu kinh doanh của tiệm Toulouse. Tôi sẵn sàng trả lời mọi câu hỏi về đơn hàng, doanh thu, chi phí và lợi nhuận! 📊'}] }
+  ];
+  return [...seed, ...fabHistory];
+}
 
-    try{
-      const ctx=await buildFabContext();
-      const res=await fetch(SCRIPT_URL,{
-        method:'POST',
-        headers:{'Content-Type':'text/plain'},
-        body:JSON.stringify({
-          action:'chatCSKH',
-          systemPrompt: FAB_SYSTEM+ctx,
-          history:fabHistory
-        })
-      });
-      if(!res.ok)throw new Error('HTTP '+res.status);
-      const data=await res.json();
-      if(!data.ok)throw new Error(data.error||'Lỗi phản hồi');
-      fabTyping(false);
-      fabHistory.push({role:'model',parts:[{text:data.reply}]});
-      fabAppend('ai',data.reply);
-      if(!fabOpen)$('fabBadge').classList.add('show');
-    }catch(e){
-      fabTyping(false);
-      fabAppend('ai','⚠️ Lỗi kết nối: '+e.message);
-    }
-    $('fabSend').disabled=false;fabBusy=false;
-    $('fabInput').focus();
-  };
+window.sendFab=async function(){
+  if(fabBusy)return;
+  const inp=$('fabInput');
+  const text=inp.value.trim();if(!text)return;
+  inp.value='';inp.style.height='38px';
+  $('fabSend').disabled=true;fabBusy=true;
+  fabAppend('user',text);
+  fabHistory.push({role:'user',parts:[{text}]});
+  fabTyping(true);
+  try{
+    const fullHistory = await buildHistoryWithCtx();
+    const res=await fetch(SCRIPT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({
+        action:'chatCSKH',
+        systemPrompt: FAB_SYSTEM,
+        history: fullHistory
+      })
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data.ok)throw new Error(data.error||'Lỗi phản hồi');
+    fabTyping(false);
+    fabHistory.push({role:'model',parts:[{text:data.reply}]});
+    fabAppend('ai',data.reply);
+    if(!fabOpen)$('fabBadge').classList.add('show');
+  }catch(e){
+    fabTyping(false);
+    fabAppend('ai','⚠️ Lỗi: '+e.message);
+  }
+  $('fabSend').disabled=false;fabBusy=false;
+  $('fabInput').focus();
+};
 })();
 </script>
 </body>
