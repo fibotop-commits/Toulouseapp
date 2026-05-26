@@ -2123,44 +2123,51 @@ if ('serviceWorker' in navigator) {
 
 /* ── BỘ NÃO TOÀN TRI: VÉT SẠCH DỮ LIỆU TOÀN BỘ WEBSITE ── */
   function getOmniscientContext() {
+    // 1. Lấy thông tin Tab (Bỏ chữ window. đi để gọi đúng biến let)
     const tabMap = { 'orders':'Đơn hàng', 'costs':'Chi phí', 'dashboard':'Dashboard', 'report':'Báo cáo', 'cskh':'CSKH', 'crm':'Quản lý khách hàng' };
-    const currentView = tabMap[window.currentTab] || window.currentTab || 'Chưa rõ';
+    const currentView = typeof currentTab !== 'undefined' ? (tabMap[currentTab] || currentTab) : 'Chưa rõ';
     const activeDate = $('selDate') ? $('selDate').value : todayStr();
     
     // Lấy bối cảnh thời gian thực
     const now = new Date();
     const timeContext = `Hôm nay là ${now.toLocaleDateString('vi-VN')} - Lúc ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}.`;
 
-    // Vét dữ liệu Tổng quan Dashboard
-    const dCount = $('dCount') ? $('dCount').textContent : '0';
-    const dTotal = $('dTotal') ? $('dTotal').textContent : '0đ';
-    const dProfit = $('dProfit') ? $('dProfit').textContent : '0đ';
-    const dCostTotal = $('dCostTotal') ? $('dCostTotal').textContent : '0đ';
+    // 2. Vét dữ liệu Tổng quan Dashboard (Dạy AI hiểu dấu '–' là chưa tải)
+    const parseUI = (id) => {
+        const text = $(id) ? $(id).textContent.trim() : '–';
+        return text === '–' ? 'Chưa tải xong (hãy nhắc sếp mở tab Dashboard để app đồng bộ số liệu)' : text;
+    };
+    const dCount = parseUI('dCount');
+    const dTotal = parseUI('dTotal');
+    const dCostTotal = parseUI('dCostTotal');
+    const dProfit = parseUI('dProfit');
 
-    // Vét dữ liệu CRM
-    let crmSummary = "Chưa đồng bộ CRM.";
-    let crmTotal = $('crmTotal') ? $('crmTotal').textContent : '0';
-    if (window.crmData && window.crmData.length > 0) {
-      const top3 = window.crmData.slice(0, 3).map(c => `${c.name} (tiêu ${fmt(c.spend)})`).join(' | ');
-      crmSummary = `Có ${crmTotal} khách. Top 3 VIP nhất: ${top3}`;
+    // 3. Vét dữ liệu CRM
+    let crmSummary = "Sếp chưa đồng bộ CRM. Hãy nhắc sếp qua tab QLKH bấm 'Đồng bộ dữ liệu thật'.";
+    if (typeof crmData !== 'undefined' && crmData.length > 0) {
+      const crmTotalCount = $('crmTotal') ? $('crmTotal').textContent : crmData.length;
+      const top3 = crmData.slice(0, 3).map(c => `${c.name} (tiêu ${typeof fmt === 'function' ? fmt(c.spend) : c.spend})`).join(' | ');
+      crmSummary = `Có ${crmTotalCount} khách. Top 3 VIP nhất: ${top3}`;
     }
 
-    // Vét dữ liệu Đơn hàng ngày đang chọn
-    const activeOrders = window.currentOrders || [];
-    let orderDetail = "Chưa có đơn nào.";
+    // 4. Vét dữ liệu Đơn hàng ngày đang chọn
+    const activeOrders = typeof currentOrders !== 'undefined' ? currentOrders : [];
+    let orderDetail = "Chưa có đơn nào trong ngày này.";
     if (activeOrders.length > 0) {
       const cakeSum = activeOrders.reduce((s, o) => s + (Number(o.cakePrice) || 0) + (Number(o.accPrice) || 0), 0);
-      orderDetail = `Có ${activeOrders.length} đơn. Tiền bánh+PK: ${fmt(cakeSum*1000)}.`;
+      const shipSum = activeOrders.reduce((s, o) => s + (Number(o.ship) || 0), 0);
+      const formattedSum = typeof fmt === 'function' ? fmt(cakeSum*1000) : (cakeSum*1000 + 'đ');
+      const formattedShip = typeof fmt === 'function' ? fmt(shipSum*1000) : (shipSum*1000 + 'đ');
+      orderDetail = `Có ${activeOrders.length} đơn. Tiền bánh+PK: ${formattedSum} - Tiền ship: ${formattedShip}.`;
     }
 
     return `[BỐI CẢNH HỆ THỐNG THỜI GIAN THỰC TOULOUSE]\n` +
            `- Thời gian: ${timeContext}\n` +
-           `- Sếp Phi đang mở tab: [${currentView}] (Ngày chọn: ${activeDate})\n` +
+           `- Sếp Phi đang mở tab: [${currentView}] (Ngày chọn trên lịch: ${activeDate})\n` +
            `- Tình hình tháng này: Đơn: ${dCount} | Tổng Thu: ${dTotal} | Tổng Chi: ${dCostTotal} | Lợi nhuận: ${dProfit}\n` +
            `- Khách hàng (CRM): ${crmSummary}\n` +
            `- Đơn hàng ngày ${activeDate}: ${orderDetail}\n`;
   }
-
   function buildSystemPrompt() {
     return 'Bạn là Trợ lý AI Toàn năng của tiệm bánh Toulouse, người dùng hiện tại là chủ tiệm (sếp Phi).'
       + ' Bạn đã được kết nối trực tiếp vào bộ nhớ của trang web và biết chính xác tình hình kinh doanh, số liệu, và khách hàng ngay lúc này.'
