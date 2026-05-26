@@ -2223,7 +2223,10 @@ if ('serviceWorker' in navigator) {
     box.scrollTop = box.scrollHeight;
   }
 
-  const FAB_SYSTEM = `Bạn là trợ lý thông minh đa năng của tiệm bánh sinh nhật Toulouse (34C Ô Chợ Dừa, Hà Nội). Hỗ trợ chủ tiệm (tên Phi) về: quản lý đơn hàng, soạn tin nhắn khách hàng, tư vấn kinh doanh, marketing F&B, tính toán nhanh, lên kế hoạch. Phong cách: ngắn gọn, thực tế, có thể dùng emoji. Luôn trả lời tiếng Việt.`;
+  const _now = new Date();
+const _dateStr = `${_now.getDate()}/${_now.getMonth()+1}/${_now.getFullYear()}`;
+const _timeStr = `${String(_now.getHours()).padStart(2,'0')}:${String(_now.getMinutes()).padStart(2,'0')}`;
+const FAB_SYSTEM = `Bạn là trợ lý thông minh đa năng của tiệm bánh sinh nhật Toulouse (34C Ô Chợ Dừa, Hà Nội). Hỗ trợ chủ tiệm về: quản lý đơn hàng, soạn tin nhắn khách hàng, tư vấn kinh doanh, marketing F&B, tính toán nhanh, lên kế hoạch. Phong cách: ngắn gọn, thực tế, có thể dùng emoji. Luôn trả lời tiếng Việt.\nThông tin thực tế: Hôm nay là ngày ${_dateStr}, hiện tại là ${_timeStr}.`;
 
   window.sendFab = async function() {
     if (fabBusy) return;
