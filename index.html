@@ -2,7 +2,7 @@
 <html lang="vi" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Toulouse</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6B7A2E">
@@ -2006,220 +2006,320 @@ if ('serviceWorker' in navigator) {
 <!-- ═══════════ FLOATING AI CHAT ═══════════ -->
 <style>
 .fab-chat{position:fixed;bottom:1.5rem;right:1.5rem;z-index:900;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),#3a3d7e);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(91,94,166,.45),0 2px 8px rgba(0,0,0,.2);transition:transform .2s,box-shadow .2s;color:#fff;font-size:22px}
-.fab-chat:hover{transform:scale(1.1) translateY(-2px);box-shadow:0 10px 28px rgba(91,94,166,.55)}
+.fab-chat:hover{transform:scale(1.1) translateY(-2px)}
 .fab-chat:active{transform:scale(.96)}
 .fab-badge{position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:var(--red);border:2px solid var(--cb);font-size:10px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;animation:fabPulse 2s ease infinite;opacity:0;pointer-events:none;transition:opacity .2s}
 .fab-badge.show{opacity:1}
 @keyframes fabPulse{0%,100%{box-shadow:0 0 0 0 rgba(192,0,0,.5)}50%{box-shadow:0 0 0 6px rgba(192,0,0,0)}}
-.fab-overlay{position:fixed;bottom:calc(1.5rem + 68px);right:1.5rem;z-index:901;width:min(380px,calc(100vw - 2rem));background:var(--cc);border-radius:18px;overflow:hidden;border:1.5px solid var(--bd);box-shadow:0 20px 60px rgba(0,0,0,.18),0 6px 20px rgba(0,0,0,.1);transform-origin:bottom right;transform:scale(.85) translateY(12px);opacity:0;pointer-events:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s}
+.fab-overlay{position:fixed;bottom:calc(1.5rem + 68px);right:1.5rem;z-index:901;width:min(380px,calc(100vw - 2rem));background:var(--cc);border-radius:18px;overflow:hidden;border:1.5px solid var(--bd);box-shadow:0 20px 60px rgba(0,0,0,.18);transform-origin:bottom right;transform:scale(.85) translateY(12px);opacity:0;pointer-events:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s}
 .fab-overlay.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all}
 .fab-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--th-bg)}
 .fab-hdr-av{width:32px;height:32px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--gold-dark),#3a3d7e);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
 .fab-hdr-info{flex:1;min-width:0}
 .fab-hdr-name{font-size:13px;font-weight:600;color:#F5EDD4;font-family:var(--serif);font-style:italic}
-.fab-hdr-sub{font-size:10px;color:rgba(245,237,212,.55);display:flex;align-items:center;gap:5px;margin-top:1px}
-.fab-hdr-sub::before{content:'';width:6px;height:6px;background:#4ade80;border-radius:50%;box-shadow:0 0 6px #4ade80}
+.fab-hdr-sub{font-size:10px;color:rgba(245,237,212,.6);display:flex;align-items:center;gap:5px;margin-top:1px}
+.fab-hdr-sub::before{content:'';width:6px;height:6px;background:#4ade80;border-radius:50%;box-shadow:0 0 6px #4ade80;flex-shrink:0}
 .fab-close{background:none;border:none;cursor:pointer;padding:4px;color:rgba(245,237,212,.6);font-size:18px;border-radius:6px;transition:all .15s;line-height:1}
 .fab-close:hover{background:rgba(255,255,255,.1);color:#F5EDD4}
 .fab-chips{display:flex;gap:5px;padding:7px 10px;flex-wrap:wrap;background:var(--gold-pale);border-bottom:1px solid var(--bd)}
-.fab-chip{font-size:11px;padding:4px 9px;border-radius:20px;border:1px solid var(--bd);background:var(--cc);color:var(--dark);cursor:pointer;transition:all .15s;white-space:nowrap;font-weight:500;font-family:var(--font)}
+.fab-chip{font-size:16px;padding:4px 9px;border-radius:20px;border:1px solid var(--bd);background:var(--cc);color:var(--dark);cursor:pointer;transition:all .15s;white-space:nowrap;font-weight:500;font-family:var(--font);-webkit-text-size-adjust:none;transform:scale(.75);transform-origin:left center;margin-right:-18px}
+.fab-chip:last-child{margin-right:0}
 .fab-chip:hover{background:var(--gold-light);border-color:var(--gold);color:var(--gold-dark)}
-.fab-msgs{height:280px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth}
+.fab-msgs{height:280px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
 .fab-msgs::-webkit-scrollbar{width:4px}
 .fab-msgs::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px}
 .fab-input-row{display:flex;gap:7px;padding:9px 10px;background:var(--cc);border-top:1px solid var(--bd);align-items:flex-end}
-.fab-input{flex:1;resize:none;height:38px;max-height:100px;border-radius:18px;padding:8px 13px;font-size:13px;border:1.5px solid var(--bd2);background:var(--cc);color:var(--ct);font-family:var(--font);outline:none;overflow-y:auto;transition:border-color .18s}
+/* font-size 16px bắt buộc để iOS không zoom */
+.fab-input{flex:1;resize:none;height:44px;max-height:100px;border-radius:18px;padding:10px 14px;font-size:16px;border:1.5px solid var(--bd2);background:var(--cc);color:var(--ct);font-family:var(--font);outline:none;overflow-y:auto;transition:border-color .18s;-webkit-appearance:none}
 .fab-input:focus{border-color:var(--gold)}
-.fab-send{width:38px;height:38px;border-radius:50%;flex-shrink:0;background:var(--th-bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#F5EDD4;font-size:16px;transition:all .18s}
+.fab-send{width:44px;height:44px;border-radius:50%;flex-shrink:0;background:var(--th-bg);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#F5EDD4;font-size:18px;transition:all .18s;-webkit-tap-highlight-color:transparent}
 .fab-send:hover{background:var(--gold-dark)}
 .fab-send:disabled{opacity:.45;pointer-events:none}
-.fab-footer{text-align:center;font-size:10px;color:var(--cm);padding:4px 0 7px;background:var(--cc)}
-@media(max-width:480px){.fab-overlay{width:calc(100vw - 1.5rem);right:.75rem;bottom:calc(1.25rem + 66px)}.fab-chat{bottom:1.25rem;right:1.25rem}}
+.fab-footer{text-align:center;font-size:10px;color:var(--cm);padding:4px 0 6px;background:var(--cc)}
+@media(max-width:480px){
+  .fab-overlay{width:calc(100vw - 1.5rem);right:.75rem;bottom:calc(1.25rem + 66px)}
+  .fab-chat{bottom:1.25rem;right:1.25rem}
+}
 </style>
 
+<!-- NÚT CHAT -->
 <button class="fab-chat" id="fabBtn" onclick="toggleFab()" title="Chat AI hỗ trợ">
   <i class="ti ti-message-chatbot" id="fabIcon"></i>
   <span class="fab-badge" id="fabBadge">1</span>
 </button>
 
+<!-- PANEL -->
 <div class="fab-overlay" id="fabOverlay">
   <div class="fab-hdr">
     <div class="fab-hdr-av"><i class="ti ti-robot"></i></div>
     <div class="fab-hdr-info">
       <div class="fab-hdr-name">Trợ lý AI · Toulouse</div>
-      <div class="fab-hdr-sub" id="fabStatus">Sẵn sàng hỗ trợ</div>
+      <div class="fab-hdr-sub" id="fabStatus">Đang tải dữ liệu tiệm...</div>
     </div>
     <button class="fab-close" onclick="toggleFab()"><i class="ti ti-x"></i></button>
   </div>
+
   <div class="fab-chips">
-    <button class="fab-chip" onclick="fabChip('Hôm nay có bao nhiêu đơn và doanh thu bao nhiêu?')">📦 Đơn hôm nay</button>
+    <button class="fab-chip" onclick="fabChip('Hôm nay có bao nhiêu đơn và tổng doanh thu là bao nhiêu?')">📦 Đơn hôm nay</button>
+    <button class="fab-chip" onclick="fabChip('Hôm qua có bao nhiêu đơn và doanh thu bao nhiêu?')">📅 Hôm qua</button>
+    <button class="fab-chip" onclick="fabChip('Tháng này tổng doanh thu và lợi nhuận là bao nhiêu?')">💰 Tổng tháng</button>
     <button class="fab-chip" onclick="fabChip('Viết tin nhắn xác nhận đơn hàng cho khách')">💌 Xác nhận đơn</button>
-    <button class="fab-chip" onclick="fabChip('Tư vấn cách tăng doanh thu tháng này')">📈 Tăng doanh thu</button>
-    <button class="fab-chip" onclick="fabChip('Tháng này doanh thu và lợi nhuận bao nhiêu?')">💰 Tổng tháng</button>
   </div>
+
   <div class="fab-msgs" id="fabMsgs">
     <div class="chat-msg ai">
       <div class="chat-av ai"><i class="ti ti-robot"></i></div>
-      <div class="chat-bubble">Xin chào sếp Phi! 🎂<br>Tôi đang tải dữ liệu tiệm... Hỏi gì cũng được nhé!</div>
+      <div class="chat-bubble">Xin chào sếp Phi! 🎂 Đang tải dữ liệu tiệm, một chút nhé...</div>
     </div>
   </div>
+
   <div class="fab-input-row">
-    <textarea class="fab-input" id="fabInput" placeholder="Hỏi bất cứ điều gì..."
+    <textarea class="fab-input" id="fabInput"
+      placeholder="Hỏi bất cứ điều gì..."
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendFab()}"
-      oninput="this.style.height='38px';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-    <button class="fab-send" id="fabSend" onclick="sendFab()"><i class="ti ti-send"></i></button>
+      oninput="this.style.height='44px';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+    <button class="fab-send" id="fabSend" onclick="sendFab()">
+      <i class="ti ti-send"></i>
+    </button>
   </div>
   <div class="fab-footer">Powered by Gemini AI &nbsp;·&nbsp; Toulouse</div>
 </div>
 
 <script>
 (function(){
-  let fabOpen=false, fabBusy=false, fabHistory=[];
-  let _fabCtx=null, _fabCtxTime=0;
+  var fabOpen=false, fabBusy=false, fabHistory=[];
+  var _fabCtx='', _fabCtxTime=0, _fabCtxReady=false;
 
-  // Huy hiệu sau 3s
-  setTimeout(()=>{ if(!fabOpen) $('fabBadge').classList.add('show'); }, 3000);
+  /* ── Hàm tiện ích nội bộ ── */
+  function _pad(v){return String(v).padStart(2,'0');}
+  function _n(v){return Number(v||0);}
+  function _fmt(v){return _n(v).toLocaleString('vi-VN')+'đ';}
+  function _today(){var d=new Date();return d.getFullYear()+'-'+_pad(d.getMonth()+1)+'-'+_pad(d.getDate());}
+  function _days(y,m){return new Date(y,m,0).getDate();}
 
-  // ── Build context từ toàn bộ dữ liệu thực ──
-  async function buildFabContext(){
-    if(_fabCtx && Date.now()-_fabCtxTime < 3*60*1000) return _fabCtx;
+  /* ── Fetch dữ liệu thực tế ── */
+  async function loadFabData(){
+    var today=_today();
+    var ty=parseInt(today.split('-')[0]), tm=parseInt(today.split('-')[1]);
+    var ctx='';
 
-    const today=todayStr();
-    const [ty,tm]=today.split('-').map(Number);
-    let ctx='\n\n=== DỮ LIỆU KINH DOANH THỰC TẾ TOULOUSE ===\n';
-
-    // Tháng hiện tại + tháng trước
-    for(let i=0;i<2;i++){
-      let m=tm-i, y=ty;
+    for(var i=0;i<2;i++){
+      var m=tm-i, y=ty;
       if(m<=0){m+=12;y--;}
-      const days=daysInMonth(y,m);
-      const dates=[];
-      for(let d=1;d<=days;d++){
-        const ds=`${y}-${pad(m)}-${pad(d)}`;
-        if(ds>today) break;
+
+      var days=_days(y,m), dates=[];
+      for(var d=1;d<=days;d++){
+        var ds=y+'-'+_pad(m)+'-'+_pad(d);
+        if(ds>today)break;
         dates.push(ds);
       }
-      if(!dates.length) continue;
+      if(!dates.length)continue;
 
-      const ym=m+'_'+y;
-      const [orderResults,costResult,fixedResult]=await Promise.all([
-        fetchRange(dates),
-        apiSmart({action:'getCostsByMonth',yearMonth:ym}).catch(()=>({costs:[]})),
-        apiSmart({action:'getFixedCosts',yearMonth:ym}).catch(()=>({ok:false,rent:0,elec:0,water:0,salary:0}))
-      ]);
+      var ym=m+'_'+y;
+      var orderRows=[], costP=0, costA=0, totalOrders=0, totalCake=0, totalShip=0;
 
-      const cbd=buildCostsByDate(costResult.costs||[]);
-      let mOrders=0,mCake=0,mShip=0,mCostP=0,mCostA=0;
-      const lines=[];
+      /* Fetch từng ngày song song */
+      var orderResults = await Promise.all(
+        dates.map(function(dt){
+          return fetch(SCRIPT_URL+'?'+new URLSearchParams({action:'getOrders',date:dt}))
+            .then(function(r){return r.json();})
+            .then(function(r){return {date:dt,orders:r.orders||[]};})
+            .catch(function(){return {date:dt,orders:[]};});
+        })
+      );
 
-      orderResults.forEach(({date,orders})=>{
-        const d=parseInt(date.split('-')[2]);
-        const cake=orders.reduce((s,o)=>s+n(o.cakePrice)+n(o.accPrice),0);
-        const ship=orders.reduce((s,o)=>s+n(o.ship),0);
-        const dc=cbd[normDate(date)]||{price:0,adCost:0};
-        mOrders+=orders.length; mCake+=cake; mShip+=ship;
-        mCostP+=dc.price; mCostA+=dc.adCost;
-        if(orders.length||dc.price||dc.adCost){
-          const detail=orders.map(o=>`(${o.time||'?'} ${o.name||'?'} ${o.size||''} ${((n(o.cakePrice)+n(o.accPrice))/1000).toFixed(0)}k)`).join(' ');
-          lines.push(`  ${pad(d)}/${pad(m)}: ${orders.length}đơn DT=${(cake/1000).toFixed(0)}k ship=${(ship/1000).toFixed(0)}k nhập=${(dc.price/1000).toFixed(0)}k QC=${(dc.adCost/1000).toFixed(0)}k ${detail}`);
+      /* Fetch chi phí tháng */
+      var costData={costs:[]};
+      try{
+        var cr=await fetch(SCRIPT_URL+'?'+new URLSearchParams({action:'getCostsByMonth',yearMonth:ym}));
+        costData=await cr.json();
+      }catch(e){}
+
+      /* Map chi phí theo ngày */
+      var cbd={};
+      (costData.costs||[]).forEach(function(c){
+        var dk=(c.date||'').trim().replace(/\//g,'-');
+        if(!cbd[dk])cbd[dk]={p:0,a:0};
+        cbd[dk].p+=_n(c.price);
+        cbd[dk].a+=_n(c.adCost);
+      });
+
+      /* Tổng hợp từng ngày */
+      orderResults.forEach(function(row){
+        var orders=row.orders;
+        var cake=orders.reduce(function(s,o){return s+_n(o.cakePrice)+_n(o.accPrice);},0);
+        var ship=orders.reduce(function(s,o){return s+_n(o.ship);},0);
+        var dc=cbd[row.date]||{p:0,a:0};
+        totalOrders+=orders.length;
+        totalCake+=cake;
+        totalShip+=ship;
+        costP+=dc.p;
+        costA+=dc.a;
+        if(orders.length||dc.p||dc.a){
+          var dd=row.date.split('-')[2]+'/'+_pad(m);
+          var detail=orders.map(function(o){
+            return '('+( o.time||'?')+' '+(o.name||'?')+' '+(o.size||'')+' '+Math.round(_n(o.cakePrice+o.accPrice)/1000)+'k)';
+          }).join(' ');
+          orderRows.push('  '+dd+': '+orders.length+' đơn DT='+Math.round(cake/1000)+'k ship='+Math.round(ship/1000)+'k nhập='+Math.round(dc.p/1000)+'k QC='+Math.round(dc.a/1000)+'k '+detail);
         }
       });
 
-      const fixed=fixedResult.ok ? n(fixedResult.rent)+n(fixedResult.elec)+n(fixedResult.water)+n(fixedResult.salary) : 0;
-      const profit=mCake-mCostP-mCostA-fixed;
-      ctx+=`\n--- THÁNG ${m}/${y} ---\n`;
-      ctx+=`Tổng: ${mOrders}đơn | DT bánh+PK=${(mCake/1e6).toFixed(2)}tr | Ship=${(mShip/1e6).toFixed(2)}tr | Nhập=${(mCostP/1e6).toFixed(2)}tr | QC=${(mCostA/1e6).toFixed(2)}tr | Cố định=${(fixed/1e6).toFixed(2)}tr | LN=${(profit/1e6).toFixed(2)}tr\n`;
-      ctx+=lines.join('\n')+'\n';
+      /* Lấy chi phí cố định */
+      var fixed=0;
+      try{
+        var fr=await fetch(SCRIPT_URL+'?'+new URLSearchParams({action:'getFixedCosts',yearMonth:ym}));
+        var fd=await fr.json();
+        if(fd.ok)fixed=_n(fd.rent)+_n(fd.elec)+_n(fd.water)+_n(fd.salary);
+      }catch(e){}
+
+      var profit=totalCake-costP-costA-fixed;
+      ctx+='\n--- THÁNG '+m+'/'+y+' ---\n';
+      ctx+='Tổng: '+totalOrders+' đơn | DT bánh+PK='+_fmt(totalCake)+' | Ship='+_fmt(totalShip)+' | Nhập hàng='+_fmt(costP)+' | QC='+_fmt(costA)+' | Cố định='+_fmt(fixed)+' | LN ròng='+_fmt(profit)+'\n';
+      ctx+=orderRows.join('\n')+'\n';
     }
-    ctx+='=== HẾT DỮ LIỆU ===';
-    _fabCtx=ctx; _fabCtxTime=Date.now();
-    return ctx;
+
+    return ctx || '(Chưa có dữ liệu)';
   }
 
-  // Preload khi trang xong
-  setTimeout(()=>buildFabContext().then(()=>{
-    $('fabStatus').textContent='Dữ liệu đã sẵn sàng ✓';
-  }).catch(()=>{}), 2000);
+  /* ── Preload khi trang xong ── */
+  setTimeout(async function(){
+    try{
+      _fabCtx = await loadFabData();
+      _fabCtxTime = Date.now();
+      _fabCtxReady = true;
+      var el=document.getElementById('fabStatus');
+      if(el) el.textContent='Dữ liệu sẵn sàng ✓';
+      /* Thay tin nhắn chào */
+      var msgs=document.getElementById('fabMsgs');
+      if(msgs){
+        msgs.innerHTML='';
+        _appendMsg('ai','Xin chào sếp Phi! 🎂\nDữ liệu tiệm đã tải xong. Hỏi gì về đơn hàng, doanh thu hay chi phí đều được nhé!');
+      }
+    }catch(e){
+      var el=document.getElementById('fabStatus');
+      if(el) el.textContent='⚠️ Lỗi tải dữ liệu';
+    }
+  }, 1500);
 
-  window.toggleFab=function(){
-    fabOpen=!fabOpen;
-    $('fabOverlay').classList.toggle('open',fabOpen);
-    $('fabIcon').className=fabOpen?'ti ti-x':'ti ti-message-chatbot';
-    if(fabOpen){$('fabBadge').classList.remove('show');setTimeout(()=>$('fabInput').focus(),280);}
-  };
+  setTimeout(function(){
+    if(!fabOpen){
+      var b=document.getElementById('fabBadge');
+      if(b) b.classList.add('show');
+    }
+  },4000);
 
-  window.fabChip=function(text){$('fabInput').value=text;sendFab();};
-
-  function fabAppend(role,text){
-    const box=$('fabMsgs');
-    const div=document.createElement('div');
-    div.className=`chat-msg ${role}`;
-    const isAI=role==='ai';
-    div.innerHTML=`<div class="chat-av ${role}">${isAI?'<i class="ti ti-robot"></i>':'<i class="ti ti-user"></i>'}</div><div class="chat-bubble">${isAI?mdToHtml(text):esc(text).replace(/\n/g,'<br>')}</div>`;
+  /* ── UI helpers ── */
+  function _appendMsg(role,text){
+    var box=document.getElementById('fabMsgs');
+    if(!box)return;
+    var div=document.createElement('div');
+    div.className='chat-msg '+role;
+    var isAI=role==='ai';
+    var content=isAI?(typeof mdToHtml==='function'?mdToHtml(text):text.replace(/\n/g,'<br>')):(typeof esc==='function'?esc(text):text).replace(/\n/g,'<br>');
+    div.innerHTML='<div class="chat-av '+role+'">'+(isAI?'<i class="ti ti-robot"></i>':'<i class="ti ti-user"></i>')+'</div><div class="chat-bubble">'+content+'</div>';
     box.appendChild(div);
     box.scrollTop=box.scrollHeight;
   }
 
-  function fabTyping(show){
-    const el=document.getElementById('fabTyping');
+  function _typing(show){
+    var el=document.getElementById('fabTyping');
     if(!show){if(el)el.remove();return;}
     if(el)return;
-    const box=$('fabMsgs');
-    const div=document.createElement('div');
+    var box=document.getElementById('fabMsgs');
+    if(!box)return;
+    var div=document.createElement('div');
     div.className='chat-msg ai';div.id='fabTyping';
-    div.innerHTML=`<div class="chat-av ai"><i class="ti ti-robot"></i></div><div class="chat-bubble" style="padding:12px 16px"><div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>`;
+    div.innerHTML='<div class="chat-av ai"><i class="ti ti-robot"></i></div><div class="chat-bubble" style="padding:12px 16px"><div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>';
     box.appendChild(div);box.scrollTop=box.scrollHeight;
   }
 
-  const _now=new Date();
-  const _d=`${_now.getDate()}/${_now.getMonth()+1}/${_now.getFullYear()}`;
-  const _t=`${String(_now.getHours()).padStart(2,'0')}:${String(_now.getMinutes()).padStart(2,'0')}`;
-  const FAB_SYSTEM=`Bạn là trợ lý AI đa năng của tiệm bánh sinh nhật Toulouse (34C Ô Chợ Dừa, Hà Nội). Hỗ trợ chủ tiệm (tên Phi) về mọi vấn đề: phân tích đơn hàng, doanh thu, chi phí, lợi nhuận, soạn tin nhắn, tư vấn kinh doanh. Hôm nay: ${_d}, ${_t}. Phong cách: ngắn gọn, thực tế, dùng emoji. Luôn dùng tiếng Việt. Khi được hỏi về số liệu, hãy đọc từ DỮ LIỆU THỰC TẾ được cung cấp.`;
-
-  async function buildHistoryWithCtx(){
-  const ctx = await buildFabContext();
-  const seed = [
-    { role:'user',  parts:[{text:'Đây là toàn bộ dữ liệu kinh doanh thực tế của tiệm tôi:\n'+ctx+'\n\nHãy ghi nhớ để trả lời các câu hỏi tiếp theo.'}] },
-    { role:'model', parts:[{text:'Đã nhận đủ dữ liệu kinh doanh của tiệm Toulouse. Tôi sẵn sàng trả lời mọi câu hỏi về đơn hàng, doanh thu, chi phí và lợi nhuận! 📊'}] }
-  ];
-  return [...seed, ...fabHistory];
-}
-
-window.sendFab=async function(){
-  if(fabBusy)return;
-  const inp=$('fabInput');
-  const text=inp.value.trim();if(!text)return;
-  inp.value='';inp.style.height='38px';
-  $('fabSend').disabled=true;fabBusy=true;
-  fabAppend('user',text);
-  fabHistory.push({role:'user',parts:[{text}]});
-  fabTyping(true);
-  try{
-    const fullHistory = await buildHistoryWithCtx();
-    const res=await fetch(SCRIPT_URL,{
-      method:'POST',
-      headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({
-        action:'chatCSKH',
-        systemPrompt: FAB_SYSTEM,
-        history: fullHistory
-      })
-    });
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    if(!data.ok)throw new Error(data.error||'Lỗi phản hồi');
-    fabTyping(false);
-    fabHistory.push({role:'model',parts:[{text:data.reply}]});
-    fabAppend('ai',data.reply);
-    if(!fabOpen)$('fabBadge').classList.add('show');
-  }catch(e){
-    fabTyping(false);
-    fabAppend('ai','⚠️ Lỗi: '+e.message);
+  /* ── System prompt ── */
+  function buildSystemPrompt(){
+    var now=new Date();
+    var dateStr=now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear();
+    var timeStr=_pad(now.getHours())+':'+_pad(now.getMinutes());
+    return 'Bạn là trợ lý AI của tiệm bánh Toulouse (Hà Nội), hỗ trợ chủ tiệm tên Phi.'
+      +' Hôm nay: '+dateStr+', '+timeStr+'.'
+      +' QUAN TRỌNG: Bạn ĐÃ ĐƯỢC cung cấp đầy đủ dữ liệu thực tế của tiệm ngay trong cuộc hội thoại này.'
+      +' LUÔN LUÔN đọc và sử dụng dữ liệu đó để trả lời.'
+      +' TUYỆT ĐỐI KHÔNG được nói rằng bạn không có dữ liệu hoặc không có quyền truy cập.'
+      +' Trả lời ngắn gọn, dùng tiếng Việt, có thể dùng emoji.';
   }
-  $('fabSend').disabled=false;fabBusy=false;
-  $('fabInput').focus();
-};
+
+  /* ── Toggle ── */
+  window.toggleFab=function(){
+    fabOpen=!fabOpen;
+    var ov=document.getElementById('fabOverlay');
+    var ic=document.getElementById('fabIcon');
+    var bg=document.getElementById('fabBadge');
+    if(ov) ov.classList.toggle('open',fabOpen);
+    if(ic) ic.className=fabOpen?'ti ti-x':'ti ti-message-chatbot';
+    if(fabOpen&&bg) bg.classList.remove('show');
+    if(fabOpen) setTimeout(function(){var i=document.getElementById('fabInput');if(i)i.focus();},280);
+  };
+
+  window.fabChip=function(text){
+    var i=document.getElementById('fabInput');
+    if(i) i.value=text;
+    sendFab();
+  };
+
+  /* ── Gửi tin nhắn ── */
+  window.sendFab=async function(){
+    if(fabBusy)return;
+    var inp=document.getElementById('fabInput');
+    var send=document.getElementById('fabSend');
+    var text=(inp.value||'').trim();
+    if(!text)return;
+    inp.value='';inp.style.height='44px';
+    send.disabled=true;fabBusy=true;
+
+    _appendMsg('user',text);
+    fabHistory.push({role:'user',parts:[{text:text}]});
+    _typing(true);
+
+    try{
+      /* Nếu data chưa ready, thử load lại */
+      if(!_fabCtxReady){
+        try{ _fabCtx=await loadFabData(); _fabCtxReady=true; }catch(e){}
+      }
+
+      /* Inject dữ liệu vào đầu history */
+      var dataMsg='DỮLIỆU THỰC TẾ TIỆM TOULOUSE (đọc kỹ để trả lời):\n'+_fabCtx;
+      var fullHistory=[
+        {role:'user',  parts:[{text:dataMsg}]},
+        {role:'model', parts:[{text:'Đã đọc và ghi nhớ toàn bộ dữ liệu kinh doanh của tiệm Toulouse. Sẵn sàng!'}]}
+      ].concat(fabHistory);
+
+      var res=await fetch(SCRIPT_URL,{
+        method:'POST',
+        headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify({
+          action:'chatCSKH',
+          systemPrompt:buildSystemPrompt(),
+          history:fullHistory
+        })
+      });
+      if(!res.ok)throw new Error('HTTP '+res.status);
+      var data=await res.json();
+      if(!data.ok)throw new Error(data.error||'Lỗi phản hồi');
+
+      _typing(false);
+      fabHistory.push({role:'model',parts:[{text:data.reply}]});
+      _appendMsg('ai',data.reply);
+      if(!fabOpen){var b=document.getElementById('fabBadge');if(b)b.classList.add('show');}
+
+    }catch(e){
+      _typing(false);
+      _appendMsg('ai','⚠️ Lỗi: '+e.message);
+    }
+
+    send.disabled=false;fabBusy=false;
+    if(inp) inp.focus();
+  };
+
 })();
 </script>
+<!-- ═══════════ END FLOATING AI CHAT ═══════════ -->
 </body>
 </html>
