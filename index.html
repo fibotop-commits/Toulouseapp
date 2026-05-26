@@ -2,7 +2,7 @@
 <html lang="vi" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, interactive-widget=resizes-content, viewport-fit=cover">
 <title>Toulouse</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6B7A2E">
@@ -386,13 +386,12 @@ tr.trow td{background:rgba(240,226,180,.3);color:#8B2C00;font-weight:700;border-
   .btn-row .btn,.theme-btn{padding:8px 10px}
 }
 @media (max-width: 768px) {
-  /* Ép mọi ngóc ngách nhập liệu lên chuẩn 16px để chặn Safari Auto-Zoom */
+  /* Ép font 16px chuẩn Apple để KHÔNG bị auto-zoom khi focus */
   input, input[type="text"], input[type="number"], input[type="time"], input[type="date"], input[type="password"], textarea, select, .fab-input, .chat-input { 
     font-size: 16px !important; 
   }
-  
-  /* Chặn tính năng zoom khi người dùng vô tình chạm đúp (double-tap) */
-  *, input, textarea, select, button {
+  /* Vô hiệu hóa thao tác double-tap to zoom trên các phần tử tương tác */
+  *, input, textarea, select, button, a {
     touch-action: manipulation !important;
   }
 }
@@ -2122,52 +2121,51 @@ if ('serviceWorker' in navigator) {
     box.appendChild(div); box.scrollTop = box.scrollHeight;
   }
 
-  /* ── BỘ NÃO TOÀN TRI: VÉT SẠCH DỮ LIỆU TOÀN BỘ WEBSITE ── */
+/* ── BỘ NÃO TOÀN TRI: VÉT SẠCH DỮ LIỆU TOÀN BỘ WEBSITE ── */
   function getOmniscientContext() {
-    // 1. Xác định sếp đang đứng ở đâu trên web
-    let tabMap = { 'orders':'Đơn hàng', 'costs':'Chi phí', 'dashboard':'Dashboard', 'report':'Báo cáo', 'cskh':'CSKH', 'crm':'Quản lý khách hàng' };
-    let currentView = tabMap[window.currentTab] || window.currentTab || 'Chưa rõ';
+    const tabMap = { 'orders':'Đơn hàng', 'costs':'Chi phí', 'dashboard':'Dashboard', 'report':'Báo cáo', 'cskh':'CSKH', 'crm':'Quản lý khách hàng' };
+    const currentView = tabMap[window.currentTab] || window.currentTab || 'Chưa rõ';
     const activeDate = $('selDate') ? $('selDate').value : todayStr();
+    
+    // Lấy bối cảnh thời gian thực
+    const now = new Date();
+    const timeContext = `Hôm nay là ${now.toLocaleDateString('vi-VN')} - Lúc ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}.`;
 
-    // 2. Vét dữ liệu Tổng quan Dashboard (Quét UI)
+    // Vét dữ liệu Tổng quan Dashboard
     const dCount = $('dCount') ? $('dCount').textContent : '0';
     const dTotal = $('dTotal') ? $('dTotal').textContent : '0đ';
     const dProfit = $('dProfit') ? $('dProfit').textContent : '0đ';
     const dCostTotal = $('dCostTotal') ? $('dCostTotal').textContent : '0đ';
 
-    // 3. Vét dữ liệu Khách hàng (CRM) từ biến Global
-    let crmSummary = "Sếp chưa đồng bộ CRM.";
+    // Vét dữ liệu CRM
+    let crmSummary = "Chưa đồng bộ CRM.";
     let crmTotal = $('crmTotal') ? $('crmTotal').textContent : '0';
-    let crmVIP = $('crmVIP') ? $('crmVIP').textContent : '0';
     if (window.crmData && window.crmData.length > 0) {
-      let top3 = window.crmData.slice(0, 3).map(c => `${c.name} (${c.phone}): tiêu ${fmt(c.spend)}`).join(' | ');
-      crmSummary = `Tổng ${crmTotal} khách, có ${crmVIP} VIP. Top 3 khách VIP nhất: ${top3}`;
+      const top3 = window.crmData.slice(0, 3).map(c => `${c.name} (tiêu ${fmt(c.spend)})`).join(' | ');
+      crmSummary = `Có ${crmTotal} khách. Top 3 VIP nhất: ${top3}`;
     }
 
-    // 4. Vét dữ liệu Đơn hàng của ngày đang chọn
-    let activeOrders = window.currentOrders || [];
-    let orderDetail = "Không có đơn nào.";
+    // Vét dữ liệu Đơn hàng ngày đang chọn
+    const activeOrders = window.currentOrders || [];
+    let orderDetail = "Chưa có đơn nào.";
     if (activeOrders.length > 0) {
-      let cakeSum = 0, shipSum = 0;
-      activeOrders.forEach(o => { cakeSum += (n(o.cakePrice) + n(o.accPrice)); shipSum += n(o.ship); });
-      orderDetail = `Có ${activeOrders.length} đơn (Tiền bánh: ${fmt(cakeSum)}, Tiền ship: ${fmt(shipSum)}). Chi tiết: ` 
-        + activeOrders.map(o => `[Khách: ${o.name||'Ẩn'} - Giờ: ${o.time||'?'} - Size: ${o.size||'?'} - Bánh: ${o.cakePrice||0}k - Ship: ${o.ship||0}k]`).join(', ');
+      const cakeSum = activeOrders.reduce((s, o) => s + (Number(o.cakePrice) || 0) + (Number(o.accPrice) || 0), 0);
+      orderDetail = `Có ${activeOrders.length} đơn. Tiền bánh+PK: ${fmt(cakeSum*1000)}.`;
     }
 
-    // 5. Đóng gói toàn bộ thành 1 báo cáo siêu cấp gửi cho não AI
-    let ctx = `[HỆ THỐNG GIÁM SÁT TOÀN DIỆN TOULOUSE CAKE - THỜI GIAN THỰC]\n`;
-    ctx += `1. TRẠNG THÁI HIỆN TẠI:\n- Sếp đang xem Tab: [${currentView}]\n- Ngày sếp đang chọn trên app: ${activeDate}\n`;
-    ctx += `2. TỔNG QUAN THÁNG NÀY (Từ Dashboard):\n- Số đơn: ${dCount} | Tổng DT: ${dTotal} | Tổng Chi: ${dCostTotal} | Lợi nhuận: ${dProfit}\n`;
-    ctx += `3. QUẢN LÝ KHÁCH HÀNG (CRM):\n- ${crmSummary}\n`;
-    ctx += `4. CHI TIẾT ĐƠN HÀNG NGÀY ĐANG CHỌN (${activeDate}):\n- ${orderDetail}\n`;
-
-    return ctx;
+    return `[BỐI CẢNH HỆ THỐNG THỜI GIAN THỰC TOULOUSE]\n` +
+           `- Thời gian: ${timeContext}\n` +
+           `- Sếp Phi đang mở tab: [${currentView}] (Ngày chọn: ${activeDate})\n` +
+           `- Tình hình tháng này: Đơn: ${dCount} | Tổng Thu: ${dTotal} | Tổng Chi: ${dCostTotal} | Lợi nhuận: ${dProfit}\n` +
+           `- Khách hàng (CRM): ${crmSummary}\n` +
+           `- Đơn hàng ngày ${activeDate}: ${orderDetail}\n`;
   }
 
   function buildSystemPrompt() {
-    return 'Bạn là Trợ lý Giám đốc Toàn năng của tiệm bánh Toulouse, người dùng hiện tại là chủ tiệm (sếp Khang).'
-      + ' Bạn ĐÃ ĐƯỢC cung cấp toàn bộ dữ liệu quét từ mã nguồn, giao diện và database của trang web theo thời gian thực (Omniscient Context).'
-      + ' Nếu sếp hỏi số liệu, hãy đọc kỹ [HỆ THỐNG GIÁM SÁT TOÀN DIỆN] bên dưới để trả lời chính xác, sắc bén. Nhận biết được sếp đang ở Tab nào để tư vấn phù hợp. Luôn xưng "em" và gọi "sếp Khang".\n\n'
+    return 'Bạn là Trợ lý AI Toàn năng của tiệm bánh Toulouse, người dùng hiện tại là chủ tiệm (sếp Phi).'
+      + ' Bạn đã được kết nối trực tiếp vào bộ nhớ của trang web và biết chính xác tình hình kinh doanh, số liệu, và khách hàng ngay lúc này.'
+      + ' Hãy chủ động, sắc bén. Nếu sếp hỏi số liệu, đọc dữ liệu [BỐI CẢNH HỆ THỐNG] để báo cáo.'
+      + ' Nếu sếp xin lời khuyên, hãy dựa vào lợi nhuận hoặc giờ giấc hiện tại để đề xuất (ví dụ: tối muộn thì nhắc sếp nghỉ ngơi, lợi nhuận thấp thì gợi ý chạy ads). Luôn xưng "em" và gọi "sếp Phi".\n\n'
       + getOmniscientContext();
   }
 
@@ -2176,7 +2174,9 @@ if ('serviceWorker' in navigator) {
     var msgs = document.getElementById('fabMsgs');
     if(msgs){
       msgs.innerHTML = '';
-      _appendMsg('ai', 'Xin chào sếp Khang! 👁️\nEm đã kết nối vào hệ thống lõi của web. Em có thể đọc được Dashboard, danh sách khách VIP trong CRM và chi tiết từng đơn hàng sếp đang xem. Sếp cần tra cứu gì cứ gõ nhé!');
+      var hour = new Date().getHours();
+      var greeting = hour < 11 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+      _appendMsg('ai', `${greeting} sếp ! 👁️\nEm đã đồng bộ toàn bộ dữ liệu tiệm (đơn hàng, chi phí, CRM). Hệ thống báo cáo lợi nhuận và khách VIP đã sẵn sàng. Sếp cần phân tích hay tra cứu gì hôm nay?`);
     }
     var el = document.getElementById('fabStatus');
     if(el) el.textContent = 'Kết nối hệ thống lõi · Trực tuyến';
