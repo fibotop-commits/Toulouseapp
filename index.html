@@ -2,7 +2,7 @@
 <html lang="vi" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Toulouse</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6B7A2E">
@@ -385,8 +385,16 @@ tr.trow td{background:rgba(240,226,180,.3);color:#8B2C00;font-weight:700;border-
   .hdr h1{font-size:15px}.btn-row .btn span,.theme-btn span{display:none}
   .btn-row .btn,.theme-btn{padding:8px 10px}
 }
-@media(max-width:768px){
-  input, textarea, select { font-size: 16px !important; }
+@media (max-width: 768px) {
+  /* Ép mọi ngóc ngách nhập liệu lên chuẩn 16px để chặn Safari Auto-Zoom */
+  input, input[type="text"], input[type="number"], input[type="time"], input[type="date"], input[type="password"], textarea, select, .fab-input, .chat-input { 
+    font-size: 16px !important; 
+  }
+  
+  /* Chặn tính năng zoom khi người dùng vô tình chạm đúp (double-tap) */
+  *, input, textarea, select, button {
+    touch-action: manipulation !important;
+  }
 }
 @media print{
   .hdr,.tabs,.btn-row,.dash-ctrl,.btn-ol,#tab-orders,#tab-costs,#tab-report,.rpt-card:first-child{display:none!important}
@@ -2088,273 +2096,154 @@ if ('serviceWorker' in navigator) {
 <script>
 (function(){
   var fabOpen=false, fabBusy=false, fabHistory=[];
-  var _fabCtx='', _fabCtxTime=0, _fabCtxReady=false;
 
-  /* ── Hàm tiện ích nội bộ ── */
-  function _pad(v){return String(v).padStart(2,'0');}
-  function _n(v){return Number(v||0);}
-  function _fmt(v){return _n(v).toLocaleString('vi-VN')+'đ';}
-  function _today(){var d=new Date();return d.getFullYear()+'-'+_pad(d.getMonth()+1)+'-'+_pad(d.getDate());}
-  function _days(y,m){return new Date(y,m,0).getDate();}
-
-  /* ── Fetch dữ liệu thực tế ── */
-  async function loadFabData(){
-    var today=_today();
-    var ty=parseInt(today.split('-')[0]), tm=parseInt(today.split('-')[1]);
-
-    /* Tính hôm qua */
-    var yd=new Date(); yd.setDate(yd.getDate()-1);
-    var yesterday=yd.getFullYear()+'-'+_pad(yd.getMonth()+1)+'-'+_pad(yd.getDate());
-
-    /* ── BƯỚC 1: Fetch fresh hôm nay + hôm qua + chi phí tháng (3 request song song) ── */
-    var todayOrders=[], yestOrders=[], monthCosts=[], fixedCost=0;
-    var ym=tm+'_'+ty;
-    try{
-      var results=await Promise.all([
-        fetch(SCRIPT_URL+'?action=getOrders&date='+today).then(function(r){return r.json();}).catch(function(){return {orders:[]};}),
-        fetch(SCRIPT_URL+'?action=getOrders&date='+yesterday).then(function(r){return r.json();}).catch(function(){return {orders:[]};}),
-        fetch(SCRIPT_URL+'?action=getCostsByMonth&yearMonth='+ym).then(function(r){return r.json();}).catch(function(){return {costs:[]};}),
-        fetch(SCRIPT_URL+'?action=getFixedCosts&yearMonth='+ym).then(function(r){return r.json();}).catch(function(){return {ok:false};})
-      ]);
-      todayOrders  = results[0].orders||[];
-      yestOrders   = results[1].orders||[];
-      monthCosts   = results[2].costs||[];
-      var fd=results[3];
-      if(fd.ok) fixedCost=Number(fd.rent||0)+Number(fd.elec||0)+Number(fd.water||0)+Number(fd.salary||0);
-    }catch(e){}
-
-    /* ── BƯỚC 2: Đọc lịch sử từ localStorage cache ── */
-    var histOrders={}; /* date → orders[] */
-    var CP='tlse_c_';
-    try{
-      Object.keys(localStorage).forEach(function(k){
-        if(!k.startsWith(CP)) return;
-        try{
-          var cached=JSON.parse(localStorage.getItem(k));
-          if(!cached||!cached.d) return;
-          var m=k.match(/date=(\d{4}-\d{2}-\d{2})/);
-          if(m && cached.d.orders && m[1]!==today && m[1]!==yesterday){
-            histOrders[m[1]]=cached.d.orders;
-          }
-        }catch(e){}
-      });
-    }catch(e){}
-
-    /* ── BƯỚC 3: Tổng hợp chi phí tháng theo ngày ── */
-    var cbd={};
-    monthCosts.forEach(function(c){
-      /* Chuẩn hoá ngày – dùng normDate của app nếu có, fallback tự xử lý */
-      var dt='';
-      try{ dt=normDate(c.date); }catch(e){
-        var s=String(c.date||'').trim();
-        if(/^\d{4}-\d{2}-\d{2}$/.test(s)) dt=s;
-        else{ var p=s.split(/[\/\-]/);
-          if(p.length===3){
-            if(p[0].length===4) dt=p[0]+'-'+_pad(parseInt(p[1]))+'-'+_pad(parseInt(p[2]));
-            else dt=p[2]+'-'+_pad(parseInt(p[1]))+'-'+_pad(parseInt(p[0]));
-          }
-        }
-      }
-      if(!dt) return;
-      if(!cbd[dt]) cbd[dt]={cp:0,ca:0};
-      cbd[dt].cp+=Number(c.price||0);
-      cbd[dt].ca+=Number(c.adCost||0);
-    });
-
-    /* ── BƯỚC 4: Xây context string ── */
-    function _sumOrders(orders){
-      var cake=0,ship=0;
-      orders.forEach(function(o){cake+=_n(o.cakePrice)+_n(o.accPrice);ship+=_n(o.ship);});
-      return {cake:cake,ship:ship};
-    }
-    function _orderDetail(orders){
-      return orders.map(function(o){
-        return '('+(o.time||'?')+' '+(o.name||'?')+' '+(o.size||'').trim()+' '+Math.round((_n(o.cakePrice)+_n(o.accPrice))/1000)+'k)';
-      }).join(' ');
-    }
-
-    var ctx='';
-
-    /* Hôm nay */
-    var t=_sumOrders(todayOrders);
-    ctx+='HÔM NAY ('+today+'): '+todayOrders.length+' đơn | DT='+_fmt(t.cake)+' | Ship='+_fmt(t.ship)+' | Tổng='+_fmt(t.cake+t.ship)+'\n';
-    if(todayOrders.length) ctx+='  Chi tiết: '+_orderDetail(todayOrders)+'\n';
-
-    /* Hôm qua */
-    var y2=_sumOrders(yestOrders);
-    ctx+='HÔM QUA ('+yesterday+'): '+yestOrders.length+' đơn | DT='+_fmt(y2.cake)+' | Ship='+_fmt(y2.ship)+'\n';
-    if(yestOrders.length) ctx+='  Chi tiết: '+_orderDetail(yestOrders)+'\n';
-
-    /* Tổng tháng từ dữ liệu fresh */
-    var mDates=Object.keys(histOrders).filter(function(d){
-      return d.startsWith(ty+'-'+_pad(tm));
-    });
-    var mCake=t.cake+y2.cake, mShip=t.ship+y2.ship, mCount=todayOrders.length+yestOrders.length;
-    mDates.forEach(function(d){
-      var s=_sumOrders(histOrders[d]);
-      mCake+=s.cake; mShip+=s.ship; mCount+=histOrders[d].length;
-    });
-    var mCostP=Object.values(cbd).reduce(function(s,v){return s+v.cp;},0);
-    var mCostA=Object.values(cbd).reduce(function(s,v){return s+v.ca;},0);
-    var profit=mCake-mCostP-mCostA-fixedCost;
-    ctx+='\nTHÁNG '+tm+'/'+ty+' (tổng): '+mCount+' đơn | DT bánh+PK='+_fmt(mCake)+' | Nhập='+_fmt(mCostP)+' | QC='+_fmt(mCostA)+' | Cố định='+_fmt(fixedCost)+' | LN ròng='+_fmt(profit)+'\n';
-
-    /* Lịch sử ngày khác trong tháng từ cache */
-    var histDates=Object.keys(histOrders).filter(function(d){
-      return d.startsWith(ty+'-'+_pad(tm)) && d!==today && d!==yesterday;
-    }).sort().reverse();
-    if(histDates.length){
-      ctx+='\nLỊCH SỬ CÁC NGÀY TRONG THÁNG (từ cache):\n';
-      histDates.forEach(function(d){
-        var orders=histOrders[d], s=_sumOrders(orders);
-        var dc=cbd[d]||{cp:0,ca:0};
-        var dd=d.split('-')[2]+'/'+d.split('-')[1];
-        ctx+='  '+dd+': '+orders.length+' đơn DT='+_fmt(s.cake)+' nhập='+_fmt(dc.cp)+' QC='+_fmt(dc.ca)+' '+_orderDetail(orders)+'\n';
-      });
-    }
-
-    return ctx||'(Chưa có dữ liệu)';
-  }
-
-  /* ── Preload khi trang xong ── */
-  setTimeout(async function(){
-    try{
-      _fabCtx = await loadFabData();
-      _fabCtxTime = Date.now();
-      _fabCtxReady = true;
-      var el=document.getElementById('fabStatus');
-      if(el) el.textContent='Dữ liệu sẵn sàng ✓';
-      /* Thay tin nhắn chào */
-      var msgs=document.getElementById('fabMsgs');
-      if(msgs){
-        msgs.innerHTML='';
-        _appendMsg('ai','Xin chào sếp Phi! 🎂\nDữ liệu tiệm đã tải xong. Hỏi gì về đơn hàng, doanh thu hay chi phí đều được nhé!');
-      }
-    }catch(e){
-      var el=document.getElementById('fabStatus');
-      if(el) el.textContent='⚠️ Lỗi tải dữ liệu';
-    }
-  }, 1500);
-
-  setTimeout(function(){
-    if(!fabOpen){
-      var b=document.getElementById('fabBadge');
-      if(b) b.classList.add('show');
-    }
-  },4000);
-
-  /* ── UI helpers ── */
-  function _appendMsg(role,text){
-    var box=document.getElementById('fabMsgs');
-    if(!box)return;
-    var div=document.createElement('div');
-    div.className='chat-msg '+role;
-    var isAI=role==='ai';
-    var content=isAI?(typeof mdToHtml==='function'?mdToHtml(text):text.replace(/\n/g,'<br>')):(typeof esc==='function'?esc(text):text).replace(/\n/g,'<br>');
-    div.innerHTML='<div class="chat-av '+role+'">'+(isAI?'<i class="ti ti-robot"></i>':'<i class="ti ti-user"></i>')+'</div><div class="chat-bubble">'+content+'</div>';
+  /* ── UI Helpers ── */
+  function _appendMsg(role, text) {
+    var box = document.getElementById('fabMsgs');
+    if(!box) return;
+    var div = document.createElement('div');
+    div.className = 'chat-msg ' + role;
+    var isAI = role === 'ai';
+    var content = isAI ? (typeof mdToHtml==='function' ? mdToHtml(text) : text.replace(/\n/g,'<br>')) : (typeof esc==='function' ? esc(text) : text).replace(/\n/g,'<br>');
+    div.innerHTML = '<div class="chat-av ' + role + '">' + (isAI ? '<i class="ti ti-robot"></i>' : '<i class="ti ti-user"></i>') + '</div><div class="chat-bubble">' + content + '</div>';
     box.appendChild(div);
-    box.scrollTop=box.scrollHeight;
+    box.scrollTop = box.scrollHeight;
   }
 
-  function _typing(show){
-    var el=document.getElementById('fabTyping');
-    if(!show){if(el)el.remove();return;}
-    if(el)return;
-    var box=document.getElementById('fabMsgs');
-    if(!box)return;
-    var div=document.createElement('div');
-    div.className='chat-msg ai';div.id='fabTyping';
-    div.innerHTML='<div class="chat-av ai"><i class="ti ti-robot"></i></div><div class="chat-bubble" style="padding:12px 16px"><div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>';
-    box.appendChild(div);box.scrollTop=box.scrollHeight;
+  function _typing(show) {
+    var el = document.getElementById('fabTyping');
+    if(!show) { if(el) el.remove(); return; }
+    if(el) return;
+    var box = document.getElementById('fabMsgs');
+    if(!box) return;
+    var div = document.createElement('div');
+    div.className = 'chat-msg ai'; div.id = 'fabTyping';
+    div.innerHTML = '<div class="chat-av ai"><i class="ti ti-robot"></i></div><div class="chat-bubble" style="padding:12px 16px"><div class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>';
+    box.appendChild(div); box.scrollTop = box.scrollHeight;
   }
 
-  /* ── System prompt ── */
-  function buildSystemPrompt(){
-    var now=new Date();
-    var dateStr=now.getDate()+'/'+(now.getMonth()+1)+'/'+now.getFullYear();
-    var timeStr=_pad(now.getHours())+':'+_pad(now.getMinutes());
-    return 'Bạn là trợ lý AI của tiệm bánh Toulouse (Hà Nội), hỗ trợ chủ tiệm tên Phi.'
-      +' Hôm nay: '+dateStr+', '+timeStr+'.'
-      +' QUAN TRỌNG: Bạn ĐÃ ĐƯỢC cung cấp đầy đủ dữ liệu thực tế của tiệm ngay trong cuộc hội thoại này.'
-      +' LUÔN LUÔN đọc và sử dụng dữ liệu đó để trả lời.'
-      +' TUYỆT ĐỐI KHÔNG được nói rằng bạn không có dữ liệu hoặc không có quyền truy cập.'
-      +' Trả lời ngắn gọn, dùng tiếng Việt, có thể dùng emoji.';
+  /* ── BỘ NÃO TOÀN TRI: VÉT SẠCH DỮ LIỆU TOÀN BỘ WEBSITE ── */
+  function getOmniscientContext() {
+    // 1. Xác định sếp đang đứng ở đâu trên web
+    let tabMap = { 'orders':'Đơn hàng', 'costs':'Chi phí', 'dashboard':'Dashboard', 'report':'Báo cáo', 'cskh':'CSKH', 'crm':'Quản lý khách hàng' };
+    let currentView = tabMap[window.currentTab] || window.currentTab || 'Chưa rõ';
+    const activeDate = $('selDate') ? $('selDate').value : todayStr();
+
+    // 2. Vét dữ liệu Tổng quan Dashboard (Quét UI)
+    const dCount = $('dCount') ? $('dCount').textContent : '0';
+    const dTotal = $('dTotal') ? $('dTotal').textContent : '0đ';
+    const dProfit = $('dProfit') ? $('dProfit').textContent : '0đ';
+    const dCostTotal = $('dCostTotal') ? $('dCostTotal').textContent : '0đ';
+
+    // 3. Vét dữ liệu Khách hàng (CRM) từ biến Global
+    let crmSummary = "Sếp chưa đồng bộ CRM.";
+    let crmTotal = $('crmTotal') ? $('crmTotal').textContent : '0';
+    let crmVIP = $('crmVIP') ? $('crmVIP').textContent : '0';
+    if (window.crmData && window.crmData.length > 0) {
+      let top3 = window.crmData.slice(0, 3).map(c => `${c.name} (${c.phone}): tiêu ${fmt(c.spend)}`).join(' | ');
+      crmSummary = `Tổng ${crmTotal} khách, có ${crmVIP} VIP. Top 3 khách VIP nhất: ${top3}`;
+    }
+
+    // 4. Vét dữ liệu Đơn hàng của ngày đang chọn
+    let activeOrders = window.currentOrders || [];
+    let orderDetail = "Không có đơn nào.";
+    if (activeOrders.length > 0) {
+      let cakeSum = 0, shipSum = 0;
+      activeOrders.forEach(o => { cakeSum += (n(o.cakePrice) + n(o.accPrice)); shipSum += n(o.ship); });
+      orderDetail = `Có ${activeOrders.length} đơn (Tiền bánh: ${fmt(cakeSum)}, Tiền ship: ${fmt(shipSum)}). Chi tiết: ` 
+        + activeOrders.map(o => `[Khách: ${o.name||'Ẩn'} - Giờ: ${o.time||'?'} - Size: ${o.size||'?'} - Bánh: ${o.cakePrice||0}k - Ship: ${o.ship||0}k]`).join(', ');
+    }
+
+    // 5. Đóng gói toàn bộ thành 1 báo cáo siêu cấp gửi cho não AI
+    let ctx = `[HỆ THỐNG GIÁM SÁT TOÀN DIỆN TOULOUSE CAKE - THỜI GIAN THỰC]\n`;
+    ctx += `1. TRẠNG THÁI HIỆN TẠI:\n- Sếp đang xem Tab: [${currentView}]\n- Ngày sếp đang chọn trên app: ${activeDate}\n`;
+    ctx += `2. TỔNG QUAN THÁNG NÀY (Từ Dashboard):\n- Số đơn: ${dCount} | Tổng DT: ${dTotal} | Tổng Chi: ${dCostTotal} | Lợi nhuận: ${dProfit}\n`;
+    ctx += `3. QUẢN LÝ KHÁCH HÀNG (CRM):\n- ${crmSummary}\n`;
+    ctx += `4. CHI TIẾT ĐƠN HÀNG NGÀY ĐANG CHỌN (${activeDate}):\n- ${orderDetail}\n`;
+
+    return ctx;
   }
 
-  /* ── Toggle ── */
-  window.toggleFab=function(){
-    fabOpen=!fabOpen;
-    var ov=document.getElementById('fabOverlay');
-    var ic=document.getElementById('fabIcon');
-    var bg=document.getElementById('fabBadge');
-    if(ov) ov.classList.toggle('open',fabOpen);
-    if(ic) ic.className=fabOpen?'ti ti-x':'ti ti-message-chatbot';
-    if(fabOpen&&bg) bg.classList.remove('show');
-    if(fabOpen) setTimeout(function(){var i=document.getElementById('fabInput');if(i)i.focus();},280);
+  function buildSystemPrompt() {
+    return 'Bạn là Trợ lý Giám đốc Toàn năng của tiệm bánh Toulouse, người dùng hiện tại là chủ tiệm (sếp Khang).'
+      + ' Bạn ĐÃ ĐƯỢC cung cấp toàn bộ dữ liệu quét từ mã nguồn, giao diện và database của trang web theo thời gian thực (Omniscient Context).'
+      + ' Nếu sếp hỏi số liệu, hãy đọc kỹ [HỆ THỐNG GIÁM SÁT TOÀN DIỆN] bên dưới để trả lời chính xác, sắc bén. Nhận biết được sếp đang ở Tab nào để tư vấn phù hợp. Luôn xưng "em" và gọi "sếp Khang".\n\n'
+      + getOmniscientContext();
+  }
+
+  /* ── Init UI ── */
+  setTimeout(function(){
+    var msgs = document.getElementById('fabMsgs');
+    if(msgs){
+      msgs.innerHTML = '';
+      _appendMsg('ai', 'Xin chào sếp Khang! 👁️\nEm đã kết nối vào hệ thống lõi của web. Em có thể đọc được Dashboard, danh sách khách VIP trong CRM và chi tiết từng đơn hàng sếp đang xem. Sếp cần tra cứu gì cứ gõ nhé!');
+    }
+    var el = document.getElementById('fabStatus');
+    if(el) el.textContent = 'Kết nối hệ thống lõi · Trực tuyến';
+    var b = document.getElementById('fabBadge');
+    if(!fabOpen && b) b.classList.add('show');
+  }, 1000);
+
+  window.toggleFab = function(){
+    fabOpen = !fabOpen;
+    var ov = document.getElementById('fabOverlay');
+    var ic = document.getElementById('fabIcon');
+    var bg = document.getElementById('fabBadge');
+    if(ov) ov.classList.toggle('open', fabOpen);
+    if(ic) ic.className = fabOpen ? 'ti ti-x' : 'ti ti-message-chatbot';
+    if(fabOpen && bg) bg.classList.remove('show');
+    if(fabOpen) setTimeout(function(){ var i=document.getElementById('fabInput'); if(i) i.focus(); }, 280);
   };
 
-  window.fabChip=function(text){
-    var i=document.getElementById('fabInput');
-    if(i) i.value=text;
+  window.fabChip = function(text){
+    var i = document.getElementById('fabInput');
+    if(i) i.value = text;
     sendFab();
   };
 
-  /* ── Gửi tin nhắn ── */
-  window.sendFab=async function(){
-    if(fabBusy)return;
-    var inp=document.getElementById('fabInput');
-    var send=document.getElementById('fabSend');
-    var text=(inp.value||'').trim();
-    if(!text)return;
-    inp.value='';inp.style.height='44px';
-    send.disabled=true;fabBusy=true;
+  /* ── Xử lý Gửi Chat ── */
+  window.sendFab = async function(){
+    if(fabBusy) return;
+    var inp = document.getElementById('fabInput');
+    var send = document.getElementById('fabSend');
+    var text = (inp.value||'').trim();
+    if(!text) return;
+    
+    inp.value = ''; inp.style.height = '44px';
+    send.disabled = true; fabBusy = true;
 
-    _appendMsg('user',text);
-    fabHistory.push({role:'user',parts:[{text:text}]});
+    _appendMsg('user', text);
+    fabHistory.push({role: 'user', parts: [{text: text}]});
     _typing(true);
 
-    try{
-      /* Nếu data chưa ready, thử load lại */
-      if(!_fabCtxReady){
-        try{ _fabCtx=await loadFabData(); _fabCtxReady=true; }catch(e){}
-      }
-
-      /* Inject dữ liệu vào đầu history */
-      var dataMsg='DỮLIỆU THỰC TẾ TIỆM TOULOUSE (đọc kỹ để trả lời):\n'+_fabCtx;
-      var fullHistory=[
-        {role:'user',  parts:[{text:dataMsg}]},
-        {role:'model', parts:[{text:'Đã đọc và ghi nhớ toàn bộ dữ liệu kinh doanh của tiệm Toulouse. Sẵn sàng!'}]}
-      ].concat(fabHistory);
-
-      var res=await fetch(SCRIPT_URL,{
-        method:'POST',
-        headers:{'Content-Type':'text/plain'},
-        body:JSON.stringify({
-          action:'chatCSKH',
-          systemPrompt:buildSystemPrompt(),
-          history:fullHistory
+    try {
+      var res = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain'},
+        body: JSON.stringify({
+          action: 'chatCSKH',
+          systemPrompt: buildSystemPrompt(),
+          history: fabHistory
         })
       });
-      if(!res.ok)throw new Error('HTTP '+res.status);
-      var data=await res.json();
-      if(!data.ok)throw new Error(data.error||'Lỗi phản hồi');
+      
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      var data = await res.json();
+      if(!data.ok) throw new Error(data.error || 'Lỗi phản hồi');
 
       _typing(false);
-      fabHistory.push({role:'model',parts:[{text:data.reply}]});
-      _appendMsg('ai',data.reply);
-      if(!fabOpen){var b=document.getElementById('fabBadge');if(b)b.classList.add('show');}
+      fabHistory.push({role: 'model', parts: [{text: data.reply}]});
+      _appendMsg('ai', data.reply);
 
-    }catch(e){
+    } catch(e) {
       _typing(false);
-      _appendMsg('ai','⚠️ Lỗi: '+e.message);
+      _appendMsg('ai', '⚠️ Lỗi: ' + e.message);
     }
 
-    send.disabled=false;fabBusy=false;
+    send.disabled = false; fabBusy = false;
     if(inp) inp.focus();
   };
-
 })();
 </script>
-<!-- ═══════════ END FLOATING AI CHAT ═══════════ -->
 </body>
 </html>
