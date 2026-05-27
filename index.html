@@ -458,6 +458,58 @@ tr.trow td{background:rgba(240,226,180,.3);color:#8B2C00;font-weight:700;border-
 [data-theme="dark"] .gl-prog-txt {
   color: var(--gold); text-shadow: 0 1px 2px rgba(0,0,0,0.9);
 }   
+/* ==================================================================
+   ORIGAMI OVERRIDES - GHI ĐÈ PHONG CÁCH GIẤY XẾP
+================================================================== */
+:root {
+  --rmd: 0px !important;
+  --rlg: 0px !important;
+  --sh-sm: 2px 2px 0px rgba(107, 122, 46, 0.15) !important;
+  --sh: 4px 4px 0px rgba(107, 122, 46, 0.2), inset 1px 1px 0 rgba(255, 255, 255, 0.8) !important;
+  --sh-lg: 6px 6px 0px rgba(107, 122, 46, 0.25) !important;
+  --sh-xl: 12px 12px 0px rgba(0, 0, 0, 0.15) !important;
+}
+[data-theme="dark"] {
+  --sh-sm: 2px 2px 0px rgba(0, 0, 0, 0.4) !important;
+  --sh: 4px 4px 0px rgba(0, 0, 0, 0.5), inset 1px 1px 0 rgba(255, 255, 255, 0.05) !important;
+  --sh-lg: 6px 6px 0px rgba(0, 0, 0, 0.6) !important;
+  --sh-xl: 12px 12px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Xóa kính mờ và làm vuông vức 100% */
+.mc, .fcard, .btn, .tab-btn, .btn-sub, .toast, input, textarea, select, .tabs {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 0 !important;
+}
+
+/* Hiệu ứng cắt mép giấy cho Menu Tabs */
+.tab-btn {
+  clip-path: polygon(15% 0, 100% 0, 85% 100%, 0% 100%) !important;
+  margin-left: -12px !important;
+  padding: 8px 24px !important;
+}
+.tab-btn:first-child { margin-left: 0 !important; }
+.tab-btn.active {
+  box-shadow: none !important;
+  transform: scale(1.05) !important;
+  border-bottom: 2px solid var(--gold) !important;
+}
+
+/* Hiệu ứng nhấc khối giấy khi di chuột */
+.btn-sub:hover, .mc:hover, .fcard:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 4px 4px 0px rgba(107, 122, 46, 0.2) !important;
+}
+
+/* Thay nền thành lưới Origami */
+body, [data-theme="light"] body {
+  background-image: 
+    linear-gradient(45deg, var(--dot) 25%, transparent 25%, transparent 75%, var(--dot) 75%, var(--dot)), 
+    linear-gradient(45deg, var(--dot) 25%, transparent 25%, transparent 75%, var(--dot) 75%, var(--dot)) !important;
+  background-size: 20px 20px !important;
+  background-position: 0 0, 10px 10px !important;
+}
 </style>
 </head>
 <body>
