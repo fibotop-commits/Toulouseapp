@@ -511,13 +511,8 @@ body, [data-theme="light"] body {
   background-position: 0 0, 10px 10px !important;
 }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-<canvas id="webgl-bg" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-1; pointer-events:none;"></canvas>
-
-<div id="glProgWrap" class="gl-prog-wrap">...
-   
 <div id="glProgWrap" class="gl-prog-wrap">
   <div id="glProgBar" class="gl-prog-bar"></div>
   <div id="glProgTxt" class="gl-prog-txt">0%</div>
@@ -2104,57 +2099,6 @@ if ('serviceWorker' in navigator) {
   .fab-overlay{width:calc(100vw - 1.5rem);right:.75rem;bottom:calc(1.25rem + 66px)}
   .fab-chat{bottom:1.25rem;right:1.25rem}
 }
-/* ==================================================================
-   OVERRIDE: KHÔNG GIAN 3D TƯƠNG TÁC (WEBGL & GLASSMORPHISM)
-================================================================== */
-/* 1. Xóa nền cũ, ép chế độ Dark Mode chuẩn không gian ảo */
-body {
-  background-color: transparent !important;
-  background-image: none !important;
-  color: #dde5b0 !important;
-}
-:root {
-  --cc: rgba(15, 20, 25, 0.45) !important;
-  --card-bg: rgba(20, 25, 30, 0.55) !important;
-  --hdr-bg: rgba(10, 15, 20, 0.65) !important;
-  --tab-bg: rgba(10, 15, 20, 0.7) !important;
-  --bd: rgba(176, 192, 80, 0.25) !important;
-  --gold: #b0c050 !important;
-}
-
-/* 2. Hiệu ứng Kính (Glassmorphism) cho toàn bộ các khối */
-.fcard, .mc, .chart-card, .tw, .hdr, .tabs, .chat-wrap {
-  background: var(--card-bg) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border: 1px solid var(--bd) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
-  border-radius: 16px !important;
-}
-
-/* 3. Hiệu ứng tương tác không gian 3D (Perspective Tilt) khi Hover */
-.fcard, .mc, .chart-card {
-  transform-style: preserve-3d !important;
-  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.4s !important;
-}
-.fcard:hover, .mc:hover, .chart-card:hover {
-  transform: perspective(1000px) translateZ(15px) rotateX(2deg) rotateY(-2deg) !important;
-  border-color: rgba(176, 192, 80, 0.7) !important;
-  box-shadow: -15px 15px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(176, 192, 80, 0.15) !important;
-}
-
-/* Xử lý các bảng biểu và input để chữ nổi bật trên nền kính */
-table th { background: rgba(176, 192, 80, 0.1) !important; color: #b0c050 !important; }
-table td { border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
-input, textarea, select {
-  background: rgba(0, 0, 0, 0.3) !important;
-  color: #fff !important;
-  border: 1px solid rgba(176, 192, 80, 0.3) !important;
-}
-input:focus, textarea:focus {
-  border-color: #b0c050 !important;
-  box-shadow: 0 0 15px rgba(176, 192, 80, 0.3) !important;
-}
 </style>
 
 <!-- NÚT CHAT -->
@@ -2359,111 +2303,6 @@ input:focus, textarea:focus {
     if(inp) inp.focus();
   };
 })();
-</script>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const canvas = document.getElementById('webgl-bg');
-  if (!canvas || typeof THREE === 'undefined') return;
-
-  // 1. Khởi tạo Scene, Camera, Renderer
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0a0f14, 0.002); // Sương mù tạo chiều sâu
-
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.z = 30;
-
-  const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-  // 2. Tạo hệ thống hạt (Particles / Bụi sao)
-  const particlesGeometry = new THREE.BufferGeometry();
-  const particlesCount = 700;
-  const posArray = new Float32Array(particlesCount * 3);
-
-  for(let i = 0; i < particlesCount * 3; i++) {
-    posArray[i] = (Math.random() - 0.5) * 100;
-  }
-  particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-  
-  const particlesMaterial = new THREE.PointsMaterial({
-    size: 0.15,
-    color: 0xb0c050, // Màu Gold-Green của thương hiệu
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending
-  });
-  
-  const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-  scene.add(particlesMesh);
-
-  // 3. Tạo các hình khối 3D trôi nổi (Icosahedron)
-  const shapes = [];
-  const shapeGeometry = new THREE.IcosahedronGeometry(2, 0);
-  const shapeMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0x8a9c3a, 
-    wireframe: true, 
-    transparent: true, 
-    opacity: 0.3 
-  });
-
-  for(let i = 0; i < 5; i++) {
-    const mesh = new THREE.Mesh(shapeGeometry, shapeMaterial);
-    mesh.position.set((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 20 - 10);
-    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-    scene.add(mesh);
-    shapes.push({ mesh, speedX: (Math.random()-0.5)*0.01, speedY: (Math.random()-0.5)*0.01 });
-  }
-
-  // 4. Lắng nghe tương tác chuột
-  let mouseX = 0;
-  let mouseY = 0;
-  let targetX = 0;
-  let targetY = 0;
-  const windowHalfX = window.innerWidth / 2;
-  const windowHalfY = window.innerHeight / 2;
-
-  document.addEventListener('mousemove', (event) => {
-    mouseX = (event.clientX - windowHalfX);
-    mouseY = (event.clientY - windowHalfY);
-  });
-
-  // Responsive khi resize trình duyệt
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-  // 5. Vòng lặp Render (Animation Loop)
-  const clock = new THREE.Clock();
-  
-  function animate() {
-    requestAnimationFrame(animate);
-    const elapsedTime = clock.getElapsedTime();
-
-    // Hạt xoay chậm
-    particlesMesh.rotation.y = -elapsedTime * 0.05;
-
-    // Các hình khối tự xoay
-    shapes.forEach(obj => {
-      obj.mesh.rotation.x += obj.speedX;
-      obj.mesh.rotation.y += obj.speedY;
-      obj.mesh.position.y += Math.sin(elapsedTime * 2 + obj.mesh.position.x) * 0.01;
-    });
-
-    // Camera di chuyển mượt theo chuột (Tương tác vật lý 3D)
-    targetX = mouseX * 0.001;
-    targetY = mouseY * 0.001;
-    camera.position.x += (targetX - camera.position.x) * 0.05;
-    camera.position.y += (-targetY - camera.position.y) * 0.05;
-    camera.lookAt(scene.position);
-
-    renderer.render(scene, camera);
-  }
-  
-  animate();
-});
 </script>
 </body>
 </html>
